@@ -1,0 +1,3 @@
+name = "ソウイチロウ"
+
+print(name)

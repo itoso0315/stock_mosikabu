@@ -1,0 +1,20 @@
+[
+  {
+    "name": "Keyence Corporation",
+    "code": "6861",
+    "shares": 1,
+    "average_price": 10000.0,
+    "current_price": 70880.0,
+    "currency": "JPY",
+    "price_updated_at": "2026-07-18T23:43:05+09:00"
+  },
+  {
+    "name": "Toyota Motor Corporation",
+    "code": "7203",
+    "shares": 1,
+    "average_price": 1000.0,
+    "current_price": 2899.5,
+    "currency": "JPY",
+    "price_updated_at": "2026-07-18T23:43:05+09:00"
+  }
+]
