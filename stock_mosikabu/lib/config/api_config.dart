@@ -6,7 +6,7 @@ import 'package:flutter/foundation.dart';
 /// `--dart-define=API_BASE_URL=http://192.168.11.8:8000`
 abstract final class ApiConfig {
   static const _configuredBaseUrl = String.fromEnvironment('API_BASE_URL');
-  static const _developmentLanBaseUrl = 'http://192.168.11.8:8000';
+static const _productionBaseUrl = 'https://stock-mosikabu-api.onrender.com';
 
   static String get baseUrl => resolve();
 
@@ -21,9 +21,9 @@ abstract final class ApiConfig {
   static String defaultForPlatform(
     TargetPlatform platform,
   ) => switch (platform) {
-    // The iOS Simulator can also reach the Mac through its LAN address, while
-    // localhost on a physical iPhone points to the iPhone itself.
-    TargetPlatform.iOS => _developmentLanBaseUrl,
+    // iOS uses the deployed Render backend by default so physical devices can
+    // work without a Mac-hosted local backend.
+    TargetPlatform.iOS => _productionBaseUrl,
     TargetPlatform.android => 'http://10.0.2.2:8000',
     _ => 'http://127.0.0.1:8000',
   };
