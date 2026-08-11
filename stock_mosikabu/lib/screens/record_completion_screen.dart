@@ -85,6 +85,8 @@ class _SavedRecordCard extends StatelessWidget {
           const SizedBox(height: 3),
           Text(
             record.stockName,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
             style: Theme.of(context).textTheme.titleMedium,
           ),
           const SizedBox(height: 14),

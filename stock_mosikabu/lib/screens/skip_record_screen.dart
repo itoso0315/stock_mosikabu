@@ -80,6 +80,16 @@ class _SkipRecordScreenState extends State<SkipRecordScreen> {
     }
   }
 
+  void _retryQuote() {
+    setState(() {
+      _quote = null;
+      _errorMessage = null;
+      _isLoading = true;
+      _saveErrorMessage = null;
+    });
+    _fetchQuote();
+  }
+
   void _selectReason(SkipReason reason) {
     setState(() {
       _selectedReason = reason;
@@ -91,7 +101,7 @@ class _SkipRecordScreenState extends State<SkipRecordScreen> {
 
   Future<void> _submit() async {
     final reason = _selectedReason;
-    if (reason == null || _isSaving) return;
+    if (reason == null || _quote == null || _isSaving) return;
     final draft = SkipRecordDraft(
       stock: widget.stock,
       quote: _quote,
@@ -221,6 +231,7 @@ class _SkipRecordScreenState extends State<SkipRecordScreen> {
                 quote: _quote,
                 isLoading: _isLoading,
                 errorMessage: _errorMessage,
+                onRetry: _retryQuote,
                 onYahooTap: _openYahooFinance,
               ),
               const SizedBox(height: 24),
@@ -246,7 +257,7 @@ class _SkipRecordScreenState extends State<SkipRecordScreen> {
                       physics: const NeverScrollableScrollPhysics(),
                       crossAxisSpacing: 10,
                       mainAxisSpacing: 10,
-                      childAspectRatio: 1.65,
+                      mainAxisExtent: 116,
                       children:
                           const [
                             _ReasonDefinition(
@@ -355,7 +366,8 @@ class _SkipRecordScreenState extends State<SkipRecordScreen> {
               width: double.infinity,
               child: FilledButton(
                 key: const ValueKey('submit-record-button'),
-                onPressed: _selectedReason == null || _isSaving
+                onPressed:
+                    _selectedReason == null || _quote == null || _isSaving
                     ? null
                     : _submit,
                 child: _isSaving
@@ -582,6 +594,7 @@ class _StockInfoCard extends StatelessWidget {
     required this.quote,
     required this.isLoading,
     required this.errorMessage,
+    required this.onRetry,
     required this.onYahooTap,
   });
 
@@ -589,6 +602,7 @@ class _StockInfoCard extends StatelessWidget {
   final StockQuote? quote;
   final bool isLoading;
   final String? errorMessage;
+  final VoidCallback onRetry;
   final VoidCallback onYahooTap;
 
   @override
@@ -603,14 +617,13 @@ class _StockInfoCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            children: [
-              Text(
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final code = Text(
                 stock.code,
                 style: const TextStyle(color: AppColors.mutedText),
-              ),
-              const Spacer(),
-              TextButton.icon(
+              );
+              final link = TextButton.icon(
                 key: const ValueKey('yahoo-finance-link'),
                 onPressed: onYahooTap,
                 icon: const Icon(Icons.open_in_new_rounded, size: 16),
@@ -619,12 +632,24 @@ class _StockInfoCard extends StatelessWidget {
                   visualDensity: VisualDensity.compact,
                   padding: const EdgeInsets.symmetric(horizontal: 6),
                 ),
-              ),
-            ],
+              );
+              if (constraints.maxWidth < 280) {
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    code,
+                    Align(alignment: Alignment.centerRight, child: link),
+                  ],
+                );
+              }
+              return Row(children: [code, const Spacer(), link]);
+            },
           ),
           const SizedBox(height: 3),
           Text(
             stock.name,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
             style: Theme.of(
               context,
             ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
@@ -642,32 +667,56 @@ class _StockInfoCard extends StatelessWidget {
               ],
             )
           else if (errorMessage != null)
-            Row(
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Icon(Icons.error_outline_rounded, size: 20),
-                const SizedBox(width: 8),
-                Expanded(child: Text(errorMessage!)),
+                Row(
+                  children: [
+                    const Icon(Icons.error_outline_rounded, size: 20),
+                    const SizedBox(width: 8),
+                    Expanded(child: Text(errorMessage!)),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                TextButton.icon(
+                  key: const ValueKey('retry-stock-price'),
+                  onPressed: onRetry,
+                  icon: const Icon(Icons.refresh_rounded),
+                  label: const Text('株価を再取得'),
+                ),
               ],
             )
           else if (quote != null)
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                Text(
+            LayoutBuilder(
+              builder: (context, constraints) {
+                final price = Text(
                   _formatPrice(quote!.price),
                   style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                     fontFeatures: const [FontFeature.tabularFigures()],
                   ),
-                ),
-                const Spacer(),
-                Text(
+                );
+                final fetchedAt = Text(
                   '${_formatDateTime(quote!.fetchedAt.toLocal())} 取得',
                   style: const TextStyle(
                     color: AppColors.mutedText,
                     fontSize: 12,
                   ),
-                ),
-              ],
+                );
+                if (constraints.maxWidth < 280) {
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      price,
+                      const SizedBox(height: 4),
+                      Align(alignment: Alignment.centerRight, child: fetchedAt),
+                    ],
+                  );
+                }
+                return Row(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [price, const Spacer(), fetchedAt],
+                );
+              },
             ),
         ],
       ),

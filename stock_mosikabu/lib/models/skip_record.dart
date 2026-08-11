@@ -18,6 +18,8 @@ class SkipRecord {
     this.answerPriceDate,
     this.answerChangePercent,
     this.answeredAt,
+    this.requestedAnswerDate,
+    this.effectiveAnswerDate,
   });
 
   final String id;
@@ -34,6 +36,8 @@ class SkipRecord {
   final DateTime? answerPriceDate;
   final double? answerChangePercent;
   final DateTime? answeredAt;
+  final DateTime? requestedAnswerDate;
+  final DateTime? effectiveAnswerDate;
 
   SkipRecord copyWith({
     AnswerCheckStatus? answerCheckStatus,
@@ -41,6 +45,8 @@ class SkipRecord {
     DateTime? answerPriceDate,
     double? answerChangePercent,
     DateTime? answeredAt,
+    DateTime? requestedAnswerDate,
+    DateTime? effectiveAnswerDate,
   }) => SkipRecord(
     id: id,
     stockCode: stockCode,
@@ -56,6 +62,8 @@ class SkipRecord {
     answerPriceDate: answerPriceDate ?? this.answerPriceDate,
     answerChangePercent: answerChangePercent ?? this.answerChangePercent,
     answeredAt: answeredAt ?? this.answeredAt,
+    requestedAnswerDate: requestedAnswerDate ?? this.requestedAnswerDate,
+    effectiveAnswerDate: effectiveAnswerDate ?? this.effectiveAnswerDate,
   );
 
   Map<String, Object?> toJson() => {
@@ -74,6 +82,8 @@ class SkipRecord {
     'answerPriceDate': answerPriceDate?.toIso8601String(),
     'answerChangePercent': answerChangePercent,
     'answeredAt': answeredAt?.toIso8601String(),
+    'requestedAnswerDate': requestedAnswerDate?.toIso8601String(),
+    'effectiveAnswerDate': effectiveAnswerDate?.toIso8601String(),
   };
 
   factory SkipRecord.fromJson(Map<String, dynamic> json) {
@@ -98,6 +108,8 @@ class SkipRecord {
       answerPriceDate: _parseNullableDate(json['answerPriceDate']),
       answerChangePercent: (json['answerChangePercent'] as num?)?.toDouble(),
       answeredAt: _parseNullableDate(json['answeredAt']),
+      requestedAnswerDate: _parseNullableDate(json['requestedAnswerDate']),
+      effectiveAnswerDate: _parseNullableDate(json['effectiveAnswerDate']),
     );
   }
 

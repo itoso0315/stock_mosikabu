@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
+import '../config/api_config.dart';
 import '../models/answer_close.dart';
 
 abstract interface class AnswerPriceService {
@@ -17,18 +18,10 @@ class AnswerPriceException implements Exception {
 class HttpAnswerPriceService implements AnswerPriceService {
   HttpAnswerPriceService({http.Client? client, String? baseUrl})
     : _client = client ?? http.Client(),
-      _baseUrl = baseUrl ?? _defaultBaseUrl;
+      _baseUrl = ApiConfig.resolve(baseUrl);
 
   final http.Client _client;
   final String _baseUrl;
-
-  static String get _defaultBaseUrl {
-    const configuredUrl = String.fromEnvironment('API_BASE_URL');
-    if (configuredUrl.isNotEmpty) return configuredUrl;
-    return defaultTargetPlatform == TargetPlatform.android
-        ? 'http://10.0.2.2:8000'
-        : 'http://127.0.0.1:8000';
-  }
 
   @override
   Future<AnswerClose> fetchClose(String stockCode, DateTime date) async {
@@ -36,9 +29,17 @@ class HttpAnswerPriceService implements AnswerPriceService {
       '$_baseUrl/api/stocks/$stockCode/close',
     ).replace(queryParameters: {'date': _formatDate(date)});
     try {
+      if (kDebugMode) debugPrint('[AnswerPrice] GET $uri');
       final response = await _client
           .get(uri)
           .timeout(const Duration(seconds: 15));
+      if (kDebugMode) {
+        final body = response.body;
+        debugPrint(
+          '[AnswerPrice] Response ${response.statusCode}: '
+          '${body.length <= 500 ? body : '${body.substring(0, 500)}…'}',
+        );
+      }
       if (response.statusCode != 200) {
         throw const AnswerPriceException('この日の株価を取得できませんでした');
       }
@@ -47,7 +48,11 @@ class HttpAnswerPriceService implements AnswerPriceService {
       );
     } on AnswerPriceException {
       rethrow;
-    } on Object {
+    } on Object catch (error, stackTrace) {
+      if (kDebugMode) {
+        debugPrint('[AnswerPrice] Request failed for $uri: $error');
+        debugPrintStack(stackTrace: stackTrace);
+      }
       throw const AnswerPriceException('答え合わせ価格を取得できませんでした。もう一度お試しください。');
     }
   }

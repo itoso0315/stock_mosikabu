@@ -7,6 +7,7 @@ import '../repositories/stock_master_repository.dart';
 import '../services/stock_search_service.dart';
 import '../services/stock_price_service.dart';
 import '../theme/app_theme.dart';
+import '../widgets/stock_icon.dart';
 import 'skip_record_screen.dart';
 
 class StockSearchScreen extends StatefulWidget {
@@ -199,22 +200,11 @@ class _StockResultCard extends StatelessWidget {
           padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
           child: Row(
             children: [
-              Container(
-                width: 50,
-                height: 50,
-                alignment: Alignment.center,
-                decoration: const BoxDecoration(
-                  color: AppColors.warmAccent,
-                  shape: BoxShape.circle,
-                ),
-                child: Text(
-                  stock.code.substring(0, 1),
-                  style: const TextStyle(
-                    color: AppColors.primaryDark,
-                    fontSize: 18,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
+              StockIcon(
+                key: ValueKey('search-stock-icon-${stock.code}'),
+                companyName: stock.name,
+                stockCode: stock.code,
+                size: 50,
               ),
               const SizedBox(width: 14),
               Expanded(

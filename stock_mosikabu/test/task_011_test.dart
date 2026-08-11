@@ -10,6 +10,7 @@ import 'package:moshi_kabu/models/skip_record.dart';
 import 'package:moshi_kabu/models/skip_record_draft.dart';
 import 'package:moshi_kabu/repositories/skip_record_repository.dart';
 import 'package:moshi_kabu/screens/answer_result_screen.dart';
+import 'package:moshi_kabu/screens/answer_waiting_screen.dart';
 import 'package:moshi_kabu/services/answer_price_service.dart';
 import 'package:moshi_kabu/models/stock_candidate.dart';
 import 'package:moshi_kabu/models/stock_quote.dart';
@@ -101,7 +102,7 @@ void main() {
   });
 
   testWidgets('結果画面でプラス騰落率と保存情報を表示する', (tester) async {
-    final record = _record(skippedPrice: 3515);
+    final record = _record(skippedPrice: 3515, reasonLabel: '資金を温存したい');
     await tester.pumpWidget(
       MaterialApp(
         home: AnswerResultScreen(
@@ -117,11 +118,19 @@ void main() {
     expect(find.text('もし買っていたら +7.5%'), findsOneWidget);
     expect(find.text('3,515円'), findsOneWidget);
     expect(find.text('3,780円'), findsOneWidget);
-    expect(find.text('高いと思った'), findsOneWidget);
+    expect(find.text('資金を温存したい'), findsOneWidget);
     expect(find.text('1か月後'), findsOneWidget);
     expect(find.text('2026/09/11'), findsOneWidget);
+    for (final label in ['見送った理由', '記録日時', '答え合わせ期間', '価格取得日']) {
+      final value = tester.widget<Text>(
+        find.byKey(ValueKey('answer-detail-value-$label')),
+      );
+      expect(value.maxLines, 1);
+      expect(value.softWrap, isFalse);
+    }
     expect(find.textContaining('正解'), findsNothing);
     expect(find.textContaining('不正解'), findsNothing);
+    expect(find.byKey(const ValueKey('answer-result-cat')), findsOneWidget);
     final percent = tester.widget<Text>(
       find.byKey(const ValueKey('answer-result-percent')),
     );
@@ -169,7 +178,7 @@ void main() {
     expect(completed, isFalse);
   });
 
-  testWidgets('待ちカードの結果確認後にバッジと吹き出しを消化する', (tester) async {
+  testWidgets('一覧で結果表示後にバッジと吹き出しを消化し詳細へ進める', (tester) async {
     final repository = _MemoryRepository([_record()]);
     await tester.pumpWidget(
       MoshiKabuApp(
@@ -183,19 +192,24 @@ void main() {
 
     await tester.tap(find.byTooltip('通知'));
     await tester.pumpAndSettle();
+    expect(find.text('1,234円'), findsOneWidget);
+    expect(find.text('1,500円'), findsOneWidget);
+    expect(find.text('+21.6%'), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('answer-percent-pill-positive')),
+      findsOneWidget,
+    );
+    expect(
+      repository.records.single.answerCheckStatus,
+      AnswerCheckStatus.completed,
+    );
     await tester.tap(
       find.byKey(const ValueKey('answer-waiting-record-record')),
     );
     await tester.pumpAndSettle();
     expect(find.textContaining('もし買っていたら +'), findsOneWidget);
-    expect(
-      repository.records.single.answerCheckStatus,
-      AnswerCheckStatus.completed,
-    );
-
     await tester.tap(find.byTooltip('Back'));
     await tester.pumpAndSettle();
-    expect(find.text('まだ答え合わせできる記録はありません'), findsOneWidget);
     await tester.tap(find.byTooltip('Back'));
     await tester.pumpAndSettle();
     expect(find.byKey(const ValueKey('answer-count-badge')), findsNothing);
@@ -211,14 +225,109 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.byKey(const ValueKey('answer-count-badge')), findsNothing);
   });
+
+  testWidgets('3件中2件成功なら成功分だけ消化し失敗カードを再試行できる', (tester) async {
+    final repository = _MemoryRepository([
+      _recordWith(id: 'up', code: '1001', skippedPrice: 1000),
+      _recordWith(id: 'down', code: '1002', skippedPrice: 1000),
+      _recordWith(id: 'failed', code: '1003', skippedPrice: 1000),
+    ]);
+    await tester.pumpWidget(
+      MoshiKabuApp(
+        repository: repository,
+        answerPriceService: const _MixedAnswerPriceService(),
+        clock: () => DateTime(2026, 9, 12),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('3件、答え合わせできるよ！'), findsOneWidget);
+    await tester.tap(find.byTooltip('通知'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('+10.0%'), findsOneWidget);
+    expect(find.text('-10.0%'), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey('answer-percent-pill-positive')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const ValueKey('answer-percent-pill-negative')),
+      findsOneWidget,
+    );
+    expect(find.byKey(const ValueKey('retry-answer-failed')), findsOneWidget);
+    expect(
+      repository.records
+          .where(
+            (record) => record.answerCheckStatus == AnswerCheckStatus.pending,
+          )
+          .map((record) => record.id),
+      ['failed'],
+    );
+
+    await tester.tap(find.byTooltip('Back'));
+    await tester.pumpAndSettle();
+    expect(find.text('1件、答え合わせできるよ！'), findsOneWidget);
+    expect(
+      find.descendant(
+        of: find.byKey(const ValueKey('answer-count-badge')),
+        matching: find.text('1'),
+      ),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('保存済み結果は一覧と詳細でAPIを再取得しない', (tester) async {
+    final completed = _complete(
+      _record(),
+      AnswerClose(code: '8306', close: 1500, priceDate: DateTime(2026, 9, 11)),
+    );
+    final service = _CountingAnswerPriceService();
+    await tester.pumpWidget(
+      MaterialApp(
+        home: AnswerWaitingScreen(
+          records: [completed],
+          answerPriceService: service,
+          onComplete: (record, close) async => record,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('+21.6%'), findsOneWidget);
+    expect(service.calls, 0);
+    await tester.tap(
+      find.byKey(const ValueKey('answer-waiting-record-record')),
+    );
+    await tester.pumpAndSettle();
+    expect(find.textContaining('もし買っていたら +21.6%'), findsOneWidget);
+    expect(service.calls, 0);
+  });
 }
 
-SkipRecord _record({double skippedPrice = 1234}) => SkipRecord(
+SkipRecord _record({
+  double skippedPrice = 1234,
+  String reasonLabel = '高いと思った',
+}) => SkipRecord(
   id: 'record',
   stockCode: '8306',
   stockName: '三菱UFJフィナンシャル・グループ',
   skippedPrice: skippedPrice,
   recordedAt: DateTime(2026, 8, 11, 10),
+  reason: SkipReason.priceTooHigh,
+  reasonLabel: reasonLabel,
+  answerCheckSetting: const AnswerCheckSetting.oneMonth(),
+  answerCheckStatus: AnswerCheckStatus.pending,
+);
+
+SkipRecord _recordWith({
+  required String id,
+  required String code,
+  required double skippedPrice,
+}) => SkipRecord(
+  id: id,
+  stockCode: code,
+  stockName: 'テスト$id',
+  skippedPrice: skippedPrice,
+  recordedAt: DateTime(2026, 8, 1),
   reason: SkipReason.priceTooHigh,
   reasonLabel: '高いと思った',
   answerCheckSetting: const AnswerCheckSetting.oneMonth(),
@@ -252,6 +361,32 @@ class _FailingAnswerPriceService implements AnswerPriceService {
   @override
   Future<AnswerClose> fetchClose(String stockCode, DateTime date) async {
     throw const AnswerPriceException('この日の株価を取得できませんでした');
+  }
+}
+
+class _MixedAnswerPriceService implements AnswerPriceService {
+  const _MixedAnswerPriceService();
+
+  @override
+  Future<AnswerClose> fetchClose(String stockCode, DateTime date) async {
+    if (stockCode == '1003') {
+      throw const AnswerPriceException('この日の株価を取得できませんでした');
+    }
+    return AnswerClose(
+      code: stockCode,
+      close: stockCode == '1001' ? 1100 : 900,
+      priceDate: date,
+    );
+  }
+}
+
+class _CountingAnswerPriceService implements AnswerPriceService {
+  int calls = 0;
+
+  @override
+  Future<AnswerClose> fetchClose(String stockCode, DateTime date) async {
+    calls++;
+    return AnswerClose(code: stockCode, close: 9999, priceDate: date);
   }
 }
 

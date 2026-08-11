@@ -150,6 +150,15 @@ void main() {
     await tester.tap(find.text('ソニーグループ'));
     await tester.pumpAndSettle();
     expect(find.text('テスト用エラー'), findsOneWidget);
+    expect(find.byKey(const ValueKey('retry-stock-price')), findsOneWidget);
+    expect(
+      tester
+          .widget<FilledButton>(
+            find.byKey(const ValueKey('submit-record-button')),
+          )
+          .onPressed,
+      isNull,
+    );
   });
 
   testWidgets('検索結果から見送り記録画面へ遷移できる', (tester) async {

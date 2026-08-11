@@ -3,9 +3,11 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:moshi_kabu/app.dart';
 import 'package:moshi_kabu/models/skip_record.dart';
 import 'package:moshi_kabu/models/skip_record_draft.dart';
+import 'package:moshi_kabu/models/answer_close.dart';
 import 'package:moshi_kabu/repositories/developer_answer_override_repository.dart';
 import 'package:moshi_kabu/repositories/skip_record_repository.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:moshi_kabu/services/answer_price_service.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -36,6 +38,7 @@ void main() {
           record,
         ]),
         developerOverrideRepository: overrideRepository,
+        answerPriceService: const _DeveloperAnswerPriceService(),
         clock: () => DateTime(2026, 8, 11, 12),
       ),
     );
@@ -58,7 +61,7 @@ void main() {
     await tester.tap(find.byTooltip('通知'));
     await tester.pumpAndSettle();
     expect(find.text('開発テスト銘柄'), findsOneWidget);
-    expect(find.text('2026/08/04'), findsOneWidget);
+    expect(find.text('1,300円'), findsOneWidget);
     expect(record.stockName, '開発テスト銘柄');
     expect(record.answerCheckSetting.period, AnswerCheckPeriod.oneMonth);
   });
@@ -104,7 +107,8 @@ void main() {
     await tester.tap(find.text('設定'));
     await tester.pumpAndSettle();
     expect(find.text('開発者メニュー'), findsNothing);
-    expect(find.text('買わなかった株の答え合わせアプリ'), findsOneWidget);
+    expect(find.text('答え合わせ通知'), findsOneWidget);
+    expect(find.text('すべての記録をリセット'), findsOneWidget);
   });
 }
 
@@ -148,4 +152,12 @@ class _MemoryOverrideRepository implements DeveloperAnswerOverrideRepository {
   Future<void> replaceAll(Map<String, DateTime> overrides) async {
     values = {...overrides};
   }
+}
+
+class _DeveloperAnswerPriceService implements AnswerPriceService {
+  const _DeveloperAnswerPriceService();
+
+  @override
+  Future<AnswerClose> fetchClose(String stockCode, DateTime date) async =>
+      AnswerClose(code: stockCode, close: 1300, priceDate: date);
 }

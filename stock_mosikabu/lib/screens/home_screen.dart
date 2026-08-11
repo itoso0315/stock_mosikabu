@@ -4,15 +4,21 @@ import '../models/home_view_data.dart';
 import '../theme/app_theme.dart';
 import '../widgets/cat_placeholder.dart';
 import '../widgets/home_bottom_navigation.dart';
+import '../widgets/stock_icon.dart';
+import '../widgets/record_delete_dialog.dart';
 import 'stock_search_screen.dart';
 
-class HomeScreen extends StatelessWidget {
+class HomeScreen extends StatefulWidget {
   const HomeScreen({
     super.key,
     this.data = const HomeViewData(),
     this.onAnswersTap,
     this.searchScreenBuilder,
     this.answersScreenBuilder,
+    this.reviewScreenBuilder,
+    this.analysisScreenBuilder,
+    this.allRecordsScreenBuilder,
+    this.onDeleteRecord,
     this.developerMenuBuilder,
   });
 
@@ -20,83 +26,150 @@ class HomeScreen extends StatelessWidget {
   final VoidCallback? onAnswersTap;
   final WidgetBuilder? searchScreenBuilder;
   final WidgetBuilder? answersScreenBuilder;
+  final WidgetBuilder? reviewScreenBuilder;
+  final WidgetBuilder? analysisScreenBuilder;
+  final WidgetBuilder? allRecordsScreenBuilder;
+  final Future<void> Function(String id)? onDeleteRecord;
   final WidgetBuilder? developerMenuBuilder;
+
+  @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+  int _selectedIndex = 0;
+
+  void _selectDestination(int index) {
+    if (index == 2) {
+      final builder = widget.developerMenuBuilder;
+      if (builder != null) {
+        Navigator.of(context).push(MaterialPageRoute<void>(builder: builder));
+      }
+      return;
+    }
+    if (index == 1 && widget.reviewScreenBuilder == null) return;
+    setState(() => _selectedIndex = index);
+  }
 
   @override
   Widget build(BuildContext context) {
     void openAnswers() {
-      final callback = onAnswersTap;
+      final callback = widget.onAnswersTap;
       if (callback != null) {
         callback();
         return;
       }
-      final builder = answersScreenBuilder;
+      final builder = widget.answersScreenBuilder;
       if (builder != null) {
         Navigator.of(context).push(MaterialPageRoute<void>(builder: builder));
       }
     }
 
-    final answersTap = onAnswersTap != null || answersScreenBuilder != null
+    final answersTap =
+        widget.onAnswersTap != null || widget.answersScreenBuilder != null
         ? openAnswers
         : null;
     return Scaffold(
       bottomNavigationBar: HomeBottomNavigation(
-        onSettingsTap: developerMenuBuilder == null
-            ? null
-            : () => Navigator.of(
-                context,
-              ).push(MaterialPageRoute<void>(builder: developerMenuBuilder!)),
+        selectedIndex: _selectedIndex,
+        onDestinationSelected: _selectDestination,
       ),
-      body: SafeArea(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(22, 16, 22, 32),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              _HomeHeader(
-                answerReadyCount: data.answerReadyCount,
-                onAnswersTap: answersTap,
-              ),
-              const SizedBox(height: 20),
-              _GuideArea(
-                message: data.guideMessage,
-                onTap: data.hasAnswersReady ? answersTap : null,
-              ),
-              const SizedBox(height: 22),
-              FilledButton.icon(
-                onPressed: () {
-                  Navigator.of(context).push(
-                    MaterialPageRoute<void>(
-                      builder:
-                          searchScreenBuilder ??
-                          (_) => const StockSearchScreen(),
+      body: _selectedIndex == 1
+          ? widget.reviewScreenBuilder!(context)
+          : SafeArea(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.fromLTRB(22, 16, 22, 32),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    _HomeHeader(
+                      answerReadyCount: widget.data.answerReadyCount,
+                      onAnswersTap: answersTap,
                     ),
-                  );
-                },
-                icon: const Icon(Icons.add_rounded),
-                label: const Text('もし株を記録する'),
+                    const SizedBox(height: 20),
+                    _GuideArea(
+                      message: widget.data.guideMessage,
+                      onTap: widget.data.hasAnswersReady ? answersTap : null,
+                    ),
+                    const SizedBox(height: 22),
+                    FilledButton.icon(
+                      onPressed: () {
+                        Navigator.of(context).push(
+                          MaterialPageRoute<void>(
+                            builder:
+                                widget.searchScreenBuilder ??
+                                (_) => const StockSearchScreen(),
+                          ),
+                        );
+                      },
+                      icon: const Icon(Icons.add_rounded),
+                      label: const Text('もし株を記録する'),
+                    ),
+                    const SizedBox(height: 30),
+                    _RecentStocksCard(
+                      stocks: widget.data.recentStocks,
+                      onSeeAll: widget.allRecordsScreenBuilder == null
+                          ? null
+                          : () => Navigator.of(context).push(
+                              MaterialPageRoute<void>(
+                                builder: widget.allRecordsScreenBuilder!,
+                              ),
+                            ),
+                      onDelete: widget.onDeleteRecord,
+                    ),
+                    const SizedBox(height: 20),
+                    _DecisionTrendCard(
+                      insight: widget.data.trendInsight,
+                      onTap: widget.analysisScreenBuilder == null
+                          ? null
+                          : () => Navigator.of(context).push(
+                              MaterialPageRoute<void>(
+                                builder: widget.analysisScreenBuilder!,
+                              ),
+                            ),
+                    ),
+                  ],
+                ),
               ),
-              const SizedBox(height: 30),
-              _RecentStocksCard(stocks: data.recentStocks),
-              const SizedBox(height: 20),
-              const _DecisionTrendCard(),
-            ],
-          ),
-        ),
-      ),
+            ),
     );
   }
 }
 
 class _DecisionTrendCard extends StatelessWidget {
-  const _DecisionTrendCard();
+  const _DecisionTrendCard({required this.insight, required this.onTap});
+
+  final String insight;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
-    return const _SectionCard(
+    return _SectionCard(
       title: 'あなたの見送り傾向',
       icon: Icons.bar_chart_rounded,
-      child: _EmptyMessage('見送りデータがたまると、あなたの判断傾向を振り返れます'),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            insight,
+            key: const ValueKey('home-trend-insight'),
+            style: Theme.of(context).textTheme.bodyMedium,
+          ),
+          if (onTap != null) ...[
+            const SizedBox(height: 8),
+            Align(
+              alignment: Alignment.centerRight,
+              child: TextButton.icon(
+                key: const ValueKey('open-trend-analysis'),
+                onPressed: onTap,
+                label: const Text('詳しく見る'),
+                iconAlignment: IconAlignment.end,
+                icon: const Icon(Icons.chevron_right_rounded, size: 20),
+              ),
+            ),
+          ],
+        ],
+      ),
     );
   }
 }
@@ -210,21 +283,36 @@ class _NotificationBell extends StatelessWidget {
 }
 
 class _RecentStocksCard extends StatelessWidget {
-  const _RecentStocksCard({required this.stocks});
+  const _RecentStocksCard({
+    required this.stocks,
+    required this.onSeeAll,
+    required this.onDelete,
+  });
 
   final List<RecentMoshiStock> stocks;
+  final VoidCallback? onSeeAll;
+  final Future<void> Function(String id)? onDelete;
 
   @override
   Widget build(BuildContext context) {
     return _SectionCard(
       title: '最近のもし株',
       icon: Icons.history_rounded,
+      trailing: stocks.isEmpty || onSeeAll == null
+          ? null
+          : TextButton.icon(
+              key: const ValueKey('open-all-pending-records'),
+              onPressed: onSeeAll,
+              label: const Text('すべて見る'),
+              iconAlignment: IconAlignment.end,
+              icon: const Icon(Icons.chevron_right_rounded, size: 19),
+            ),
       child: stocks.isEmpty
           ? const _EmptyMessage('記録したもし株がここに表示されます')
           : Column(
               children: [
                 for (var index = 0; index < stocks.length; index++) ...[
-                  _RecentStockRow(stock: stocks[index]),
+                  _RecentStockRow(stock: stocks[index], onDelete: onDelete),
                   if (index != stocks.length - 1)
                     const Divider(height: 25, color: AppColors.outline),
                 ],
@@ -235,27 +323,20 @@ class _RecentStocksCard extends StatelessWidget {
 }
 
 class _RecentStockRow extends StatelessWidget {
-  const _RecentStockRow({required this.stock});
+  const _RecentStockRow({required this.stock, required this.onDelete});
 
   final RecentMoshiStock stock;
+  final Future<void> Function(String id)? onDelete;
 
   @override
   Widget build(BuildContext context) {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.center,
       children: [
-        Container(
-          width: 38,
-          height: 38,
-          decoration: const BoxDecoration(
-            color: AppColors.warmAccent,
-            shape: BoxShape.circle,
-          ),
-          child: const Icon(
-            Icons.show_chart_rounded,
-            size: 20,
-            color: AppColors.primaryDark,
-          ),
+        StockIcon(
+          key: const ValueKey('home-stock-icon'),
+          companyName: stock.name,
+          stockCode: stock.stockCode,
         ),
         const SizedBox(width: 12),
         Expanded(
@@ -273,14 +354,18 @@ class _RecentStockRow extends StatelessWidget {
               const SizedBox(height: 4),
               Row(
                 children: [
-                  Text(
-                    stock.recordedPrice,
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      fontWeight: FontWeight.w600,
-                      fontFeatures: const [FontFeature.tabularFigures()],
+                  Expanded(
+                    child: Text(
+                      stock.recordedPrice,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        fontWeight: FontWeight.w600,
+                        fontFeatures: const [FontFeature.tabularFigures()],
+                      ),
                     ),
                   ),
-                  const Spacer(),
+                  const SizedBox(width: 8),
                   Text(
                     stock.recordedAt,
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
@@ -294,8 +379,35 @@ class _RecentStockRow extends StatelessWidget {
             ],
           ),
         ),
+        if (onDelete != null) ...[
+          const SizedBox(width: 4),
+          IconButton(
+            key: ValueKey('delete-recent-${stock.id}'),
+            tooltip: '記録を削除',
+            onPressed: () => _confirmDelete(context),
+            icon: const Icon(Icons.more_horiz_rounded),
+            color: AppColors.mutedText,
+          ),
+        ],
       ],
     );
+  }
+
+  Future<void> _confirmDelete(BuildContext context) async {
+    final confirmed = await confirmRecordDeletion(
+      context,
+      stockName: stock.name,
+      priceLabel: stock.recordedPrice,
+    );
+    if (!confirmed || !context.mounted) return;
+    try {
+      await onDelete!(stock.id);
+    } on Object {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('記録を削除できませんでした。もう一度お試しください。')),
+      );
+    }
   }
 }
 
@@ -392,11 +504,13 @@ class _SectionCard extends StatelessWidget {
     required this.title,
     required this.icon,
     required this.child,
+    this.trailing,
   });
 
   final String title;
   final IconData icon;
   final Widget child;
+  final Widget? trailing;
 
   @override
   Widget build(BuildContext context) {
@@ -422,6 +536,8 @@ class _SectionCard extends StatelessWidget {
               Icon(icon, color: AppColors.primaryDark, size: 22),
               const SizedBox(width: 10),
               Text(title, style: Theme.of(context).textTheme.titleMedium),
+              const Spacer(),
+              ?trailing,
             ],
           ),
           const SizedBox(height: 13),

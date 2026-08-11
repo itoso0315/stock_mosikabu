@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:moshi_kabu/app.dart';
 import 'package:moshi_kabu/models/skip_record.dart';
+import 'package:moshi_kabu/models/answer_close.dart';
 import 'package:moshi_kabu/models/skip_record_draft.dart';
 import 'package:moshi_kabu/models/stock_candidate.dart';
 import 'package:moshi_kabu/models/stock_quote.dart';
@@ -9,6 +10,7 @@ import 'package:moshi_kabu/repositories/skip_record_repository.dart';
 import 'package:moshi_kabu/screens/skip_record_screen.dart';
 import 'package:moshi_kabu/services/provisional_answer_ready_service.dart';
 import 'package:moshi_kabu/services/stock_price_service.dart';
+import 'package:moshi_kabu/services/answer_price_service.dart';
 
 void main() {
   const readyService = ProvisionalAnswerReadyService();
@@ -43,7 +45,7 @@ void main() {
     await tester.tap(find.byTooltip('通知'));
     await tester.pumpAndSettle();
 
-    expect(find.text('答え合わせ待ち'), findsOneWidget);
+    expect(find.text('答え合わせ'), findsOneWidget);
     expect(find.text('まだ答え合わせできる記録はありません'), findsOneWidget);
     await tester.tap(find.byTooltip('Back'));
     await tester.pumpAndSettle();
@@ -59,6 +61,7 @@ void main() {
     await tester.pumpWidget(
       MoshiKabuApp(
         repository: _MemoryRepository([readyRecord]),
+        answerPriceService: const _AnswerPriceService(),
         clock: () => DateTime(2026, 8, 11),
       ),
     );
@@ -78,15 +81,10 @@ void main() {
     expect(find.text('テスト株式会社'), findsOneWidget);
     expect(find.text('0001'), findsOneWidget);
     expect(find.text('1,234円'), findsOneWidget);
-    expect(find.text('2026/08/01 10:30'), findsOneWidget);
-    expect(find.text('2026/08/04'), findsOneWidget);
+    expect(find.text('1,234円'), findsOneWidget);
+    expect(find.text('1,300円'), findsOneWidget);
+    expect(find.text('+5.3%'), findsOneWidget);
     expect(find.text('高いと思った'), findsOneWidget);
-
-    await tester.tap(find.byTooltip('Back'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('1件、答え合わせできるよ！'));
-    await tester.pumpAndSettle();
-    expect(find.text('答え合わせ待ち'), findsOneWidget);
   });
 
   testWidgets('記録理由と答え合わせ期間を同じ見出し階層で表示する', (tester) async {
@@ -170,4 +168,12 @@ class _PriceService implements StockPriceService {
     price: 1234,
     fetchedAt: DateTime(2026, 8, 11),
   );
+}
+
+class _AnswerPriceService implements AnswerPriceService {
+  const _AnswerPriceService();
+
+  @override
+  Future<AnswerClose> fetchClose(String stockCode, DateTime date) async =>
+      AnswerClose(code: stockCode, close: 1300, priceDate: date);
 }

@@ -4,7 +4,8 @@ import '../models/answer_close.dart';
 import '../models/skip_record.dart';
 import '../services/answer_price_service.dart';
 import '../theme/app_theme.dart';
-import '../widgets/cat_placeholder.dart';
+import '../widgets/answer_result_style.dart';
+import '../widgets/stock_icon.dart';
 
 class AnswerResultScreen extends StatefulWidget {
   const AnswerResultScreen({
@@ -147,16 +148,20 @@ class _ResultContent extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final percent = record.answerChangePercent!;
-    final resultColor = percent > 0.05
-        ? const Color(0xFFE15F78)
-        : percent < -0.05
-        ? const Color(0xFF438DCB)
-        : AppColors.mutedText;
+    final resultColor = answerResultColor(percent);
     return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(20, 12, 20, 28),
       child: Column(
         children: [
-          const SizedBox(height: 115, child: CatPlaceholder()),
+          SizedBox(
+            height: 150,
+            child: Image.asset(
+              'assets/images/answer_result_cat.png',
+              key: const ValueKey('answer-result-cat'),
+              fit: BoxFit.contain,
+              semanticLabel: '棒グラフを上る猫',
+            ),
+          ),
           const SizedBox(height: 8),
           const Text('こんな値動きになったよ'),
           const SizedBox(height: 18),
@@ -169,15 +174,34 @@ class _ResultContent extends StatelessWidget {
             ),
             child: Column(
               children: [
-                Text(
-                  record.stockCode,
-                  style: const TextStyle(color: AppColors.mutedText),
-                ),
-                const SizedBox(height: 3),
-                Text(
-                  record.stockName,
-                  textAlign: TextAlign.center,
-                  style: Theme.of(context).textTheme.titleMedium,
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    StockIcon(
+                      companyName: record.stockName,
+                      stockCode: record.stockCode,
+                      size: 48,
+                    ),
+                    const SizedBox(width: 12),
+                    Flexible(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            record.stockName,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: Theme.of(context).textTheme.titleMedium,
+                          ),
+                          const SizedBox(height: 3),
+                          Text(
+                            record.stockCode,
+                            style: const TextStyle(color: AppColors.mutedText),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
                 const SizedBox(height: 22),
                 Row(
@@ -205,7 +229,7 @@ class _ResultContent extends StatelessWidget {
                 ),
                 const SizedBox(height: 24),
                 Text(
-                  'もし買っていたら ${_formatPercent(percent)}',
+                  'もし買っていたら ${formatAnswerPercent(percent)}',
                   key: const ValueKey('answer-result-percent'),
                   style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                     color: resultColor,
@@ -221,9 +245,6 @@ class _ResultContent extends StatelessWidget {
       ),
     );
   }
-
-  static String _formatPercent(double value) =>
-      '${value >= 0 ? '+' : ''}${value.toStringAsFixed(1)}%';
 }
 
 class _PriceColumn extends StatelessWidget {
@@ -236,9 +257,13 @@ class _PriceColumn extends StatelessWidget {
     children: [
       Text(label, style: const TextStyle(color: AppColors.mutedText)),
       const SizedBox(height: 5),
-      Text(
-        _formatPrice(price),
-        style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
+      FittedBox(
+        fit: BoxFit.scaleDown,
+        child: Text(
+          _formatPrice(price),
+          maxLines: 1,
+          style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
+        ),
       ),
     ],
   );
@@ -270,13 +295,24 @@ class _DetailsCard extends StatelessWidget {
     padding: const EdgeInsets.symmetric(vertical: 6),
     child: Row(
       children: [
-        Text(label, style: const TextStyle(color: AppColors.mutedText)),
-        const Spacer(),
-        Flexible(
-          child: Text(
-            value,
-            textAlign: TextAlign.right,
-            style: const TextStyle(fontWeight: FontWeight.w600),
+        Text(
+          label,
+          maxLines: 1,
+          softWrap: false,
+          style: const TextStyle(color: AppColors.mutedText),
+        ),
+        const SizedBox(width: 16),
+        Expanded(
+          child: FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerRight,
+            child: Text(
+              value,
+              key: ValueKey('answer-detail-value-$label'),
+              maxLines: 1,
+              softWrap: false,
+              style: const TextStyle(fontWeight: FontWeight.w600),
+            ),
           ),
         ),
       ],

@@ -1,8 +1,13 @@
 import '../models/skip_record.dart';
 import '../models/skip_record_draft.dart';
+import 'market_calendar_service.dart';
 
 class ProvisionalAnswerReadyService {
-  const ProvisionalAnswerReadyService();
+  const ProvisionalAnswerReadyService({
+    this.marketCalendar = const MarketCalendarService(),
+  });
+
+  final MarketCalendarService marketCalendar;
 
   List<SkipRecord> readyRecords(
     List<SkipRecord> records,
@@ -28,6 +33,14 @@ class ProvisionalAnswerReadyService {
 
   DateTime answerDate(SkipRecord record, {DateTime? override}) {
     if (override != null) return _dateOnly(override);
+    final savedEffective = record.effectiveAnswerDate;
+    if (savedEffective != null) return _dateOnly(savedEffective);
+    return marketCalendar.effectiveAnswerDate(requestedAnswerDate(record));
+  }
+
+  DateTime requestedAnswerDate(SkipRecord record) {
+    final savedRequested = record.requestedAnswerDate;
+    if (savedRequested != null) return _dateOnly(savedRequested);
     final recordedDate = _dateOnly(record.recordedAt);
     final setting = record.answerCheckSetting;
     return switch (setting.period) {
