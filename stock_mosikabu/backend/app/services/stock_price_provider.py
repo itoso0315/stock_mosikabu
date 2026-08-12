@@ -30,20 +30,12 @@ class YFinanceStockPriceProvider:
     def fetch(self, code: str) -> StockPrice:
         ticker = yf.Ticker(f"{code.upper()}.T")
         history = ticker.history(
-            period="1d",
-            interval="1m",
+            period="5d",
+            interval="1d",
             auto_adjust=False,
-            timeout=10,
+            timeout=15,
             raise_errors=True,
         )
-        if history.empty:
-            history = ticker.history(
-                period="5d",
-                interval="1d",
-                auto_adjust=False,
-                timeout=10,
-                raise_errors=True,
-            )
         if history.empty:
             raise ValueError("Price data is unavailable")
 
@@ -61,7 +53,7 @@ class YFinanceStockPriceProvider:
             end=(target_date + timedelta(days=1)).isoformat(),
             interval="1d",
             auto_adjust=False,
-            timeout=10,
+            timeout=15,
             raise_errors=True,
         )
         closes = history["Close"].dropna() if not history.empty else []
