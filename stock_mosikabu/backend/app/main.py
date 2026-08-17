@@ -26,8 +26,17 @@ class StockCloseResponse(BaseModel):
     priceDate: str
 
 
+class HealthResponse(BaseModel):
+    status: str
+
+
 def get_stock_price_provider() -> StockPriceProvider:
     return YFinanceStockPriceProvider()
+
+
+@app.get("/health", response_model=HealthResponse)
+def get_health() -> HealthResponse:
+    return HealthResponse(status="ok")
 
 
 @app.get("/api/stocks/{code}/quote", response_model=StockQuoteResponse)

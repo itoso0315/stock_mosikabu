@@ -32,7 +32,7 @@ class HttpAnswerPriceService implements AnswerPriceService {
       if (kDebugMode) debugPrint('[AnswerPrice] GET $uri');
       final response = await _client
           .get(uri)
-          .timeout(const Duration(seconds: 15));
+          .timeout(ApiConfig.stockRequestTimeout);
       if (kDebugMode) {
         final body = response.body;
         debugPrint(

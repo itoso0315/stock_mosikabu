@@ -1,7 +1,7 @@
 from datetime import date, datetime, timezone
 from unittest import TestCase
 
-from backend.app.main import get_stock_close, get_stock_quote
+from backend.app.main import app, get_health, get_stock_close, get_stock_quote
 from backend.app.services.stock_price_provider import HistoricalClose, StockPrice
 
 
@@ -21,6 +21,13 @@ class FakeStockPriceProvider:
 
 
 class StockQuoteEndpointTest(TestCase):
+    def test_health_returns_ok_without_creating_a_stock_price_provider(self) -> None:
+        health_route = next(route for route in app.routes if route.path == "/health")
+
+        self.assertIn("GET", health_route.methods)
+        self.assertEqual(health_route.status_code or 200, 200)
+        self.assertEqual(get_health().model_dump(), {"status": "ok"})
+
     def test_get_stock_quote(self) -> None:
         response = get_stock_quote(
             code="8306",

@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 
 import '../models/answer_close.dart';
@@ -33,12 +35,20 @@ class _AnswerWaitingScreenState extends State<AnswerWaitingScreen> {
   late final List<SkipRecord> _records;
   final Set<String> _loadingIds = {};
   final Map<String, String> _errors = {};
+  bool _showSlowLoadingMessage = false;
+  Timer? _slowLoadingTimer;
 
   @override
   void initState() {
     super.initState();
     _records = [...widget.records];
     WidgetsBinding.instance.addPostFrameCallback((_) => _loadPendingRecords());
+  }
+
+  @override
+  void dispose() {
+    _slowLoadingTimer?.cancel();
+    super.dispose();
   }
 
   Future<void> _loadPendingRecords() async {
@@ -56,6 +66,11 @@ class _AnswerWaitingScreenState extends State<AnswerWaitingScreen> {
       _loadingIds.add(record.id);
       _errors.remove(record.id);
     });
+    _slowLoadingTimer ??= Timer(const Duration(seconds: 8), () {
+      if (mounted && _loadingIds.isNotEmpty) {
+        setState(() => _showSlowLoadingMessage = true);
+      }
+    });
     try {
       final answerDate = _answerDate(record);
       final close = await widget.answerPriceService.fetchClose(
@@ -68,6 +83,7 @@ class _AnswerWaitingScreenState extends State<AnswerWaitingScreen> {
       setState(() {
         if (index >= 0) _records[index] = completed;
         _loadingIds.remove(record.id);
+        if (_loadingIds.isEmpty) _showSlowLoadingMessage = false;
       });
     } on AnswerPriceException catch (error) {
       _showError(record.id, error.message);
@@ -80,6 +96,7 @@ class _AnswerWaitingScreenState extends State<AnswerWaitingScreen> {
     if (!mounted) return;
     setState(() {
       _loadingIds.remove(id);
+      if (_loadingIds.isEmpty) _showSlowLoadingMessage = false;
       _errors[id] = message;
     });
   }
@@ -121,20 +138,35 @@ class _AnswerWaitingScreenState extends State<AnswerWaitingScreen> {
         top: false,
         child: _records.isEmpty
             ? const _EmptyState()
-            : ListView.separated(
-                padding: const EdgeInsets.fromLTRB(20, 14, 20, 28),
-                itemCount: _records.length,
-                separatorBuilder: (_, _) => const SizedBox(height: 12),
-                itemBuilder: (context, index) {
-                  final record = _records[index];
-                  return _AnswerSummaryCard(
-                    record: record,
-                    isLoading: _loadingIds.contains(record.id),
-                    errorMessage: _errors[record.id],
-                    onRetry: () => _loadRecord(record),
-                    onTap: () => _openRecord(record),
-                  );
-                },
+            : Column(
+                children: [
+                  if (_showSlowLoadingMessage)
+                    const Padding(
+                      padding: EdgeInsets.fromLTRB(20, 8, 20, 0),
+                      child: Text(
+                        'サーバーを起動しています。少し時間がかかる場合があります',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(color: AppColors.mutedText),
+                      ),
+                    ),
+                  Expanded(
+                    child: ListView.separated(
+                      padding: const EdgeInsets.fromLTRB(20, 14, 20, 28),
+                      itemCount: _records.length,
+                      separatorBuilder: (_, _) => const SizedBox(height: 12),
+                      itemBuilder: (context, index) {
+                        final record = _records[index];
+                        return _AnswerSummaryCard(
+                          record: record,
+                          isLoading: _loadingIds.contains(record.id),
+                          errorMessage: _errors[record.id],
+                          onRetry: () => _loadRecord(record),
+                          onTap: () => _openRecord(record),
+                        );
+                      },
+                    ),
+                  ),
+                ],
               ),
       ),
     );

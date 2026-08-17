@@ -6,7 +6,10 @@ import 'package:flutter/foundation.dart';
 /// `--dart-define=API_BASE_URL=http://192.168.11.8:8000`
 abstract final class ApiConfig {
   static const _configuredBaseUrl = String.fromEnvironment('API_BASE_URL');
-static const _productionBaseUrl = 'https://stock-mosikabu-api.onrender.com';
+  static const _productionBaseUrl = 'https://stock-mosikabu-api.onrender.com';
+
+  static const stockRequestTimeout = Duration(seconds: 75);
+  static const healthRequestTimeout = Duration(seconds: 90);
 
   static String get baseUrl => resolve();
 

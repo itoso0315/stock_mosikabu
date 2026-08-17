@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 
@@ -15,6 +17,7 @@ import 'screens/skip_record_analysis_screen.dart';
 import 'screens/answer_waiting_screen.dart';
 import 'screens/stock_search_screen.dart';
 import 'services/stock_price_service.dart';
+import 'services/backend_warmup_service.dart';
 import 'services/answer_price_service.dart';
 import 'services/answer_notification_service.dart';
 import 'services/provisional_answer_ready_service.dart';
@@ -31,6 +34,7 @@ class MoshiKabuApp extends StatefulWidget {
     this.developerOverrideRepository,
     this.answerPriceService,
     this.notificationService,
+    this.backendWarmupService,
   });
 
   final SkipRecordRepository? repository;
@@ -40,6 +44,7 @@ class MoshiKabuApp extends StatefulWidget {
   final DeveloperAnswerOverrideRepository? developerOverrideRepository;
   final AnswerPriceService? answerPriceService;
   final AnswerNotificationService? notificationService;
+  final BackendWarmupService? backendWarmupService;
 
   @override
   State<MoshiKabuApp> createState() => _MoshiKabuAppState();
@@ -55,6 +60,7 @@ class _MoshiKabuAppState extends State<MoshiKabuApp>
   late final DeveloperAnswerOverrideRepository _developerOverrideRepository;
   late final AnswerPriceService _answerPriceService;
   late final AnswerNotificationService _notificationService;
+  late final BackendWarmupService _backendWarmupService;
   late final Future<void> _notificationInitialization;
   final _navigatorKey = GlobalKey<NavigatorState>();
   bool _notificationPreferenceEnabled = true;
@@ -84,9 +90,25 @@ class _MoshiKabuAppState extends State<MoshiKabuApp>
     _answerPriceService = widget.answerPriceService ?? HttpAnswerPriceService();
     _notificationService =
         widget.notificationService ?? LocalAnswerNotificationService();
+    _backendWarmupService =
+        widget.backendWarmupService ?? HttpBackendWarmupService();
+    unawaited(_warmUpBackend());
     _notificationInitialization = _initializeNotifications();
     _loadRecords();
     if (_developerMenuEnabled) _loadDeveloperOverrides();
+  }
+
+  Future<void> _warmUpBackend() async {
+    try {
+      await _backendWarmupService.warmUp();
+    } on Object catch (error, stackTrace) {
+      // Custom implementations are also treated as best effort so startup is
+      // never coupled to backend availability.
+      if (kDebugMode) {
+        debugPrint('[BackendWarmup] Service failed: $error');
+        debugPrintStack(stackTrace: stackTrace);
+      }
+    }
   }
 
   @override

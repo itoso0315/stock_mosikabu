@@ -41,7 +41,7 @@ class HttpStockPriceService implements StockPriceService {
       _debugLog('GET $uri');
       final response = await _client
           .get(uri)
-          .timeout(const Duration(seconds: 15));
+          .timeout(ApiConfig.stockRequestTimeout);
       _debugLog(
         'Response ${response.statusCode}: ${_responsePreview(response.body)}',
       );

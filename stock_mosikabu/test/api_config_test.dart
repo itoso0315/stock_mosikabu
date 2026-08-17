@@ -3,10 +3,10 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:moshi_kabu/config/api_config.dart';
 
 void main() {
-  test('iOS開発時は実機から到達できるMacのLAN URLを使う', () {
+  test('iOSは公開済みRender Backendを使う', () {
     expect(
       ApiConfig.defaultForPlatform(TargetPlatform.iOS),
-      'http://192.168.11.8:8000',
+      'https://stock-mosikabu-api.onrender.com',
     );
   });
 
