@@ -1,7 +1,13 @@
 from datetime import date, datetime, timezone
 from unittest import TestCase
 
-from backend.app.main import app, get_health, get_stock_close, get_stock_quote
+from backend.app.main import (
+    app,
+    get_app_ads_txt,
+    get_health,
+    get_stock_close,
+    get_stock_quote,
+)
 from backend.app.services.stock_price_provider import HistoricalClose, StockPrice
 
 
@@ -21,6 +27,23 @@ class FakeStockPriceProvider:
 
 
 class StockQuoteEndpointTest(TestCase):
+    def test_app_ads_txt_returns_admob_entry_as_plain_text(self) -> None:
+        app_ads_route = next(
+            route for route in app.routes if route.path == "/app-ads.txt"
+        )
+        response = app_ads_route.response_class(get_app_ads_txt())
+
+        self.assertIn("GET", app_ads_route.methods)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            response.body,
+            b"google.com, pub-8799841145695406, DIRECT, f08c47fec0942fa0",
+        )
+        self.assertEqual(
+            response.headers["content-type"],
+            "text/plain; charset=utf-8",
+        )
+
     def test_health_returns_ok_without_creating_a_stock_price_provider(self) -> None:
         health_route = next(route for route in app.routes if route.path == "/health")
 

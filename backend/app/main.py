@@ -3,6 +3,7 @@ from datetime import date
 
 from fastapi import Depends, FastAPI, HTTPException, Query
 from pydantic import BaseModel
+from starlette.responses import PlainTextResponse
 
 from .services.stock_price_provider import (
     StockPriceProvider,
@@ -10,6 +11,8 @@ from .services.stock_price_provider import (
 )
 
 app = FastAPI(title="Moshi Kabu development API")
+
+APP_ADS_TXT = "google.com, pub-8799841145695406, DIRECT, f08c47fec0942fa0"
 
 
 class StockQuoteResponse(BaseModel):
@@ -37,6 +40,11 @@ def get_stock_price_provider() -> StockPriceProvider:
 @app.get("/health", response_model=HealthResponse)
 def get_health() -> HealthResponse:
     return HealthResponse(status="ok")
+
+
+@app.get("/app-ads.txt", response_class=PlainTextResponse)
+def get_app_ads_txt() -> str:
+    return APP_ADS_TXT
 
 
 @app.get("/api/stocks/{code}/quote", response_model=StockQuoteResponse)
