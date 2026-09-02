@@ -16,6 +16,7 @@ import 'screens/settings_screen.dart';
 import 'screens/skip_record_analysis_screen.dart';
 import 'screens/answer_waiting_screen.dart';
 import 'screens/stock_search_screen.dart';
+import 'screens/start_screen.dart';
 import 'services/stock_price_service.dart';
 import 'services/backend_warmup_service.dart';
 import 'services/answer_price_service.dart';
@@ -35,6 +36,7 @@ class MoshiKabuApp extends StatefulWidget {
     this.answerPriceService,
     this.notificationService,
     this.backendWarmupService,
+    this.showStartScreen = false,
   });
 
   final SkipRecordRepository? repository;
@@ -45,6 +47,7 @@ class MoshiKabuApp extends StatefulWidget {
   final AnswerPriceService? answerPriceService;
   final AnswerNotificationService? notificationService;
   final BackendWarmupService? backendWarmupService;
+  final bool showStartScreen;
 
   @override
   State<MoshiKabuApp> createState() => _MoshiKabuAppState();
@@ -64,6 +67,7 @@ class _MoshiKabuAppState extends State<MoshiKabuApp>
   late final Future<void> _notificationInitialization;
   final _navigatorKey = GlobalKey<NavigatorState>();
   bool _notificationPreferenceEnabled = true;
+  late bool _hasStarted;
   NotificationPermissionState _notificationPermission =
       NotificationPermissionState.notRequested;
 
@@ -82,6 +86,7 @@ class _MoshiKabuAppState extends State<MoshiKabuApp>
   @override
   void initState() {
     super.initState();
+    _hasStarted = !widget.showStartScreen;
     WidgetsBinding.instance.addObserver(this);
     _repository = widget.repository ?? SharedPreferencesSkipRecordRepository();
     _developerOverrideRepository =
@@ -409,45 +414,51 @@ class _MoshiKabuAppState extends State<MoshiKabuApp>
       navigatorKey: _navigatorKey,
       debugShowCheckedModeBanner: false,
       theme: AppTheme.light,
-      home: HomeScreen(
-        data: _homeData,
-        answersScreenBuilder: _answersScreenBuilder,
-        reviewScreenBuilder: (_) => ReviewScreen(
-          records: _records,
-          answerPriceService: _answerPriceService,
-          onComplete: _completeAnswer,
-        ),
-        analysisScreenBuilder: (_) => SkipRecordAnalysisScreen(
-          analysis: _analysisService.analyze(_records),
-        ),
-        allRecordsScreenBuilder: (pendingContext) => PendingRecordsScreen(
-          records: _records,
-          now: widget.clock?.call() ?? DateTime.now(),
-          answerReadyService: _answerReadyService,
-          answerDateOverrides: _answerDateOverrides,
-          onOpenAnswer: (record) => _openPendingAnswer(pendingContext, record),
-          onDelete: _deleteRecord,
-        ),
-        onDeleteRecord: _deleteRecord,
-        developerMenuBuilder: (_) => SettingsScreen(
-          notificationEnabled: _notificationEnabled,
-          notificationPermission: _notificationPermission,
-          onNotificationChanged: _setNotifications,
-          onOpenNotificationSettings:
-              _notificationService.openSystemNotificationSettings,
-          onResetAllRecords: _resetAllRecords,
-          onMakeLatestReady: _developerMenuEnabled
-              ? _makeLatestAnswerReady
-              : null,
-          onMakeAllReady: _developerMenuEnabled ? _makeAllAnswersReady : null,
-          onResetOverrides: _developerMenuEnabled
-              ? _resetDeveloperOverrides
-              : null,
-        ),
-        searchScreenBuilder: (_) => StockSearchScreen(
-          stockPriceService: widget.stockPriceService,
-          onSave: _saveRecord,
-        ),
+      home: _hasStarted
+          ? _buildHomeScreen()
+          : StartScreen(onStart: () => setState(() => _hasStarted = true)),
+    );
+  }
+
+  Widget _buildHomeScreen() {
+    return HomeScreen(
+      data: _homeData,
+      answersScreenBuilder: _answersScreenBuilder,
+      reviewScreenBuilder: (_) => ReviewScreen(
+        records: _records,
+        answerPriceService: _answerPriceService,
+        onComplete: _completeAnswer,
+      ),
+      analysisScreenBuilder: (_) => SkipRecordAnalysisScreen(
+        analysis: _analysisService.analyze(_records),
+      ),
+      allRecordsScreenBuilder: (pendingContext) => PendingRecordsScreen(
+        records: _records,
+        now: widget.clock?.call() ?? DateTime.now(),
+        answerReadyService: _answerReadyService,
+        answerDateOverrides: _answerDateOverrides,
+        onOpenAnswer: (record) => _openPendingAnswer(pendingContext, record),
+        onDelete: _deleteRecord,
+      ),
+      onDeleteRecord: _deleteRecord,
+      developerMenuBuilder: (_) => SettingsScreen(
+        notificationEnabled: _notificationEnabled,
+        notificationPermission: _notificationPermission,
+        onNotificationChanged: _setNotifications,
+        onOpenNotificationSettings:
+            _notificationService.openSystemNotificationSettings,
+        onResetAllRecords: _resetAllRecords,
+        onMakeLatestReady: _developerMenuEnabled
+            ? _makeLatestAnswerReady
+            : null,
+        onMakeAllReady: _developerMenuEnabled ? _makeAllAnswersReady : null,
+        onResetOverrides: _developerMenuEnabled
+            ? _resetDeveloperOverrides
+            : null,
+      ),
+      searchScreenBuilder: (_) => StockSearchScreen(
+        stockPriceService: widget.stockPriceService,
+        onSave: _saveRecord,
       ),
     );
   }

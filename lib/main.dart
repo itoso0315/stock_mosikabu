@@ -3,5 +3,5 @@ import 'package:flutter/material.dart';
 import 'app.dart';
 
 void main() {
-  runApp(const MoshiKabuApp());
+  runApp(const MoshiKabuApp(showStartScreen: true));
 }
